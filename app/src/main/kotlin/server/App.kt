@@ -75,6 +75,8 @@ suspend fun main() {
 
                 sendDocument(it.chat, file.asMultipartFile())
                 file.delete()
+            } else if(outputStream.size() == 0) {
+                reply(it, "No content detected!")
             } else {
                 reply(it, content)
             }
