@@ -1,10 +1,11 @@
-FROM gradle:7.4.1-jdk8
-WORKDIR /build
+FROM adoptopenjdk/openjdk8:alpine-slim
 COPY . ./
+RUN chmod +x ./gradlew
 RUN ./gradlew build
 
-FROM apache/tika:1.28.1-full
-WORKDIR /app
-COPY --from=0 /build/app/build/distributions/app.tar ./
+FROM adoptopenjdk/openjdk8:alpine-slim
+WORKDIR /build
+RUN apk update && apk --no-cache add tesseract-ocr
+COPY --from=0 /app/build/distributions/app.tar ./
 RUN tar -xf app.tar && rm app.tar
-CMD ["/app/app/bin/app"]
+CMD ["/build/app/bin/app"]
