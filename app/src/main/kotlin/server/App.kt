@@ -68,13 +68,13 @@ suspend fun main() {
                     |The text will be sent as a text file
                 """.trimMargin())
 
-                val file = Files.createTempFile("",".txt").toFile()
-                val fos = FileOutputStream(file)
+                val tempFile = Files.createTempFile("",".txt").toFile()
+                val fos = FileOutputStream(tempFile)
                 outputStream.writeTo(fos)
                 fos.close()
 
-                sendDocument(it.chat, file.asMultipartFile())
-                file.delete()
+                sendDocument(it.chat, tempFile.asMultipartFile())
+                tempFile.delete()
             } else if(outputStream.size() == 0) {
                 reply(it, "No content detected!")
             } else {
