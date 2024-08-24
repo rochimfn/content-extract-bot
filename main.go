@@ -117,17 +117,17 @@ func handlePhoto(b *gotgbot.Bot, ctx *ext.Context) error {
 	for _, photo := range photos {
 		file, err := getFile(b, photo.FileId, 0)
 		if err != nil {
-			return fmt.Errorf("failed get file: %w", err)
+			return notifyParseErrorOccured(b, ctx, fmt.Errorf("failed get file: %w", err))
 		}
 
 		path, err := downloadFile(file.URL(b, nil), photo.FileUniqueId, 0)
 		if err != nil {
-			return fmt.Errorf("failed to download file: %w", err)
+			return notifyParseErrorOccured(b, ctx, fmt.Errorf("failed to download file: %w", err))
 		}
 
 		content, err := parseFile(path, "")
 		if err != nil {
-			return fmt.Errorf("failed to parse file: %w", err)
+			return notifyParseErrorOccured(b, ctx, fmt.Errorf("failed to parse file: %w", err))
 		}
 
 		contents = append(contents, content)
@@ -152,17 +152,17 @@ func handleDocument(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	file, err := getFile(b, doc.FileId, 0)
 	if err != nil {
-		return fmt.Errorf("failed get file: %w", err)
+		return notifyParseErrorOccured(b, ctx, fmt.Errorf("failed get file: %w", err))
 	}
 
 	path, err := downloadFile(file.URL(b, nil), doc.FileName, 0)
 	if err != nil {
-		return fmt.Errorf("failed to download file: %w", err)
+		return notifyParseErrorOccured(b, ctx, fmt.Errorf("failed to download file: %w", err))
 	}
 
 	content, err := parseFile(path, doc.MimeType)
 	if err != nil {
-		return fmt.Errorf("failed to parse file: %w", err)
+		return notifyParseErrorOccured(b, ctx, fmt.Errorf("failed to parse file: %w", err))
 	}
 
 	err = sendContent(b, ctx, content)
@@ -212,6 +212,11 @@ func sendContent(b *gotgbot.Bot, ctx *ext.Context, content string) error {
 	}
 
 	return nil
+}
+
+func notifyParseErrorOccured(b *gotgbot.Bot, ctx *ext.Context, err error) error {
+	_, _ = ctx.EffectiveMessage.Reply(b, "Cannot parse your file because of internal error", nil)
+	return err
 }
 
 func getFile(b *gotgbot.Bot, fileid string, retry uint) (*gotgbot.File, error) {
