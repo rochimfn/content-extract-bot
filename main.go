@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"os"
 	"strings"
@@ -231,8 +232,7 @@ func downloadFile(url, fileName string, retry uint) (string, error) {
 		return "", errors.New("download retry limit exceeded")
 	}
 
-	path := "/tmp/" + fileName
-
+	path := fmt.Sprint("/tmp/", fmt.Sprint(rand.Int63()), fileName)
 	out, err := os.Create(path)
 	if err != nil {
 		return "", err
