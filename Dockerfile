@@ -1,11 +1,12 @@
-FROM adoptopenjdk/openjdk8:alpine-slim
-COPY . ./
-RUN chmod +x ./gradlew
-RUN ./gradlew build
+FROM golang:1.22.6 AS builder
+WORKDIR /
+COPY . .
+RUN go build -o bot
 
-FROM adoptopenjdk/openjdk8:alpine-slim
-WORKDIR /build
-RUN apk update && apk --no-cache add tesseract-ocr
-COPY --from=0 /app/build/distributions/app.tar ./
-RUN tar -xf app.tar && rm app.tar
-CMD ["/build/app/bin/app"]
+FROM apache/tika:2.9.2.1-full AS runner
+COPY --from=builder ./bot ./
+
+ENV TIKA_HOST=http://localhost:9998
+
+# calling bot then default entrypoint of tika 2.9.2.1-full
+ENTRYPOINT ["/bin/sh", "-c", "./bot & exec java -cp \"/tika-server-standard-${TIKA_VERSION}.jar:/tika-extras/*\" org.apache.tika.server.core.TikaServerCli -h 0.0.0.0 $0 $@"]
