@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -16,6 +17,9 @@ import (
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
 	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/message"
 )
+
+const RETRY_GET_LIMIT = 3
+const RETRY_DOWNLOAD_LIMIT = 3
 
 func main() {
 	token := os.Getenv("TELEGRAM_TOKEN")
@@ -110,12 +114,12 @@ func handlePhoto(b *gotgbot.Bot, ctx *ext.Context) error {
 
 	var contents []string
 	for _, photo := range photos {
-		file, err := b.GetFile(photo.FileId, nil)
+		file, err := getFile(b, photo.FileId, 0)
 		if err != nil {
 			return fmt.Errorf("failed get file: %w", err)
 		}
 
-		path, err := downloadFile(file.URL(b, nil), photo.FileUniqueId)
+		path, err := downloadFile(file.URL(b, nil), photo.FileUniqueId, 0)
 		if err != nil {
 			return fmt.Errorf("failed to download file: %w", err)
 		}
@@ -145,12 +149,12 @@ func handleDocument(b *gotgbot.Bot, ctx *ext.Context) error {
 		return err
 	}
 
-	file, err := b.GetFile(doc.FileId, nil)
+	file, err := getFile(b, doc.FileId, 0)
 	if err != nil {
 		return fmt.Errorf("failed get file: %w", err)
 	}
 
-	path, err := downloadFile(file.URL(b, nil), doc.FileName)
+	path, err := downloadFile(file.URL(b, nil), doc.FileName, 0)
 	if err != nil {
 		return fmt.Errorf("failed to download file: %w", err)
 	}
@@ -209,7 +213,24 @@ func sendContent(b *gotgbot.Bot, ctx *ext.Context, content string) error {
 	return nil
 }
 
-func downloadFile(url, fileName string) (string, error) {
+func getFile(b *gotgbot.Bot, fileid string, retry uint) (*gotgbot.File, error) {
+	if retry > RETRY_GET_LIMIT {
+		return nil, errors.New("get file retry limit exceeded")
+	}
+
+	file, err := b.GetFile(fileid, nil)
+	if err != nil {
+		return getFile(b, fileid, retry+1)
+	}
+
+	return file, nil
+}
+
+func downloadFile(url, fileName string, retry uint) (string, error) {
+	if retry > RETRY_DOWNLOAD_LIMIT {
+		return "", errors.New("download retry limit exceeded")
+	}
+
 	path := "/tmp/" + fileName
 
 	out, err := os.Create(path)
@@ -220,7 +241,7 @@ func downloadFile(url, fileName string) (string, error) {
 
 	resp, err := http.Get(url)
 	if err != nil {
-		return "", err
+		return downloadFile(url, fileName, retry+1)
 	}
 
 	defer resp.Body.Close()
